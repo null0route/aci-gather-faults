@@ -12,6 +12,7 @@ import json
 import prettytable
 import requests
 import types
+import getpass
 
 __loginPath = "/api/aaaLogin.json"
 __classQuery = "/api/node/class/{0}.json"
@@ -30,18 +31,15 @@ __severityMap = {
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Get Faults from your ACI Fabrics')
     parser.add_argument("-f", help="Providate a fabric JSON file", default="fabrics.json",type=str)
-    parser.add_argument("-c", help="Provide a Credentials JSON file", default="credentials.json",type=str)
     parser.add_argument("-d", help="Filter events older than value provided", default=7, type=int)
     parser.add_argument("-l", help="Filter description texts longer than value provided", default=200, type=int)
 
     args = parser.parse_args()
 
-    credentials_file = args.c
     fabric_file = args.f
     max_event_age = args.d
     max_desc_length = args.l
 
-    credentials = json.load(open(credentials_file,'r'))
     fabrics = json.load(open(fabric_file,'r'))
 
 
@@ -49,7 +47,9 @@ if __name__=='__main__':
 
     for fabric in fabrics["fabrics"]:
         session = requests.Session()
-        session.verify = False #Set to False to disable certificate check
+        username = input("Username to fabric {}: ".format(fabric))
+        password = getpass.getpass("Password to fabric {} :".format(fabric))
+        session.verify = True #Set to False to disable certificate check
         session.headers = {"Content-Type":"application/json"}
 
         #Login
@@ -58,8 +58,8 @@ if __name__=='__main__':
             json={
                 "aaaUser":{
                     "attributes":{
-                        "name":credentials["username"],
-                        "pwd":credentials["password"]
+                        "name":username,
+                        "pwd":password
                     }
                 }
             }
