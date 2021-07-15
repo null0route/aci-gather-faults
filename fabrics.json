@@ -1,0 +1,6 @@
+{
+    "fabrics":[
+        "samplefabric.local",
+        "10.10.10.10"
+    ]
+}
