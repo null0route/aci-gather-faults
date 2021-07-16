@@ -13,8 +13,10 @@ import prettytable
 import requests
 import types
 import getpass
+import urllib3
 
 __loginPath = "/api/aaaLogin.json"
+__logoutPath = "/api/aaaLogout.json"
 __classQuery = "/api/node/class/{0}.json"
 __moQuery = "/api/node/mo/{0}.json"
 __schema = "https://"
@@ -29,17 +31,26 @@ __severityMap = {
 }
 
 if __name__=='__main__':
-    parser = argparse.ArgumentParser(description='Get Faults from your ACI Fabrics')
-    parser.add_argument("-f", help="Providate a fabric JSON file", default="fabrics.json",type=str)
-    parser.add_argument("-d", help="Filter events older than value provided", default=7, type=int)
-    parser.add_argument("-l", help="Filter description texts longer than value provided", default=200, type=int)
+    parser = argparse.ArgumentParser(description='Get Faults from your ACI Fabrics',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-f","--fabric", help="Providate a fabric JSON file", default="fabrics.json",type=str)
+    parser.add_argument("-d","--days", help="Filter events older than value provided", default=7, type=int)
+    parser.add_argument("-l","--length", help="Filter description texts longer than value provided", default=200, type=int)
+    parser.add_argument("-a","--ack",help="Show faults which have been ACKed in the APIC",action="store_true")
+    parser.add_argument("--faults",help="Filter fault severities not provided",default="critical,major,minor,warning,info,cleared", type=str)
+    parser.add_argument("--ignore-warnings",help="Disable warning messages",action='store_true')
+    parser.add_argument("--disable-certificate-check",help="Disables validation of server certificate",action='store_false')
 
     args = parser.parse_args()
 
-    fabric_file = args.f
-    max_event_age = args.d
-    max_desc_length = args.l
+    print(args)
 
+    fabric_file = args.fabric
+    max_event_age = args.days
+    max_desc_length = args.length
+
+    if args.ignore_warnings is not None:
+        urllib3.disable_warnings()
+    
     fabrics = json.load(open(fabric_file,'r'))
 
 
@@ -48,8 +59,8 @@ if __name__=='__main__':
     for fabric in fabrics["fabrics"]:
         session = requests.Session()
         username = input("Username to fabric {}: ".format(fabric))
-        password = getpass.getpass("Password to fabric {} :".format(fabric))
-        session.verify = True #Set to False to disable certificate check
+        password = getpass.getpass("Password to fabric {}: ".format(fabric))
+        session.verify = False if args.disable_certificate_check is not None else True
         session.headers = {"Content-Type":"application/json"}
 
         #Login
@@ -94,6 +105,17 @@ if __name__=='__main__':
         #https://stackoverflow.com/questions/6578986/how-to-convert-json-data-into-a-python-object
         pyAllFaults = json.loads(json.dumps(allFaults), object_hook=lambda d: types.SimpleNamespace(**d))
 
+        #Logout from ACI cluster
+        session.post(
+            url=__schema+fabric+__logoutPath,
+            json={
+                "aaaUser":{
+                    "attributes":{
+                        "name":username
+                    }
+                }
+            })
+
         #Collect Faults to print
         print_faults = []
 
@@ -107,10 +129,13 @@ if __name__=='__main__':
             else:
                 raise NotImplemented("Fault type has not been implemented")
             
-            if attr.ack == "yes":
+            if attr.ack == "yes" and args.ack is not None:
                 continue
 
             if len(attr.descr) > max_desc_length:
+                continue
+
+            if attr.severity not in args.faults.split(","):
                 continue
             
             year_month_day,hours_min_sec = tuple(attr.lastTransition.split("T"))
