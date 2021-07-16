@@ -1,3 +1,4 @@
+[![published](https://static.production.devnetcloud.com/codeexchange/assets/images/devnet-published.svg)](https://developer.cisco.com/codeexchange/github/repo/null0route/aci-gather-faults)
 # Gather faults from ACI fabrics
 
 Sample code how to use the Cisco ACI REST API to gather faults and fabric healths over 1 or several ACI fabrics. The results are filtered and presented in an easy to consume format. 
