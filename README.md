@@ -32,7 +32,7 @@ The script will prompt the user for username and password for each fabric which 
 
     python3 main.py -d 14
 
-### Get faults with description fields with length up to 1000 characters
+### Truncate description text to only 1000 characters
 
     python3 main.py -l 1000
 
