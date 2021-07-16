@@ -35,11 +35,14 @@ The script will prompt the user for username and password for each fabric which 
 
     python3 main.py -l 1000
 
-## Get faults for 3 days with less than 20 characters and with a custom fabric JSON file
+### Get faults for 3 days with less than 20 characters and with a custom fabric JSON file
 
     python3 main.py -d 3 -l 20 -f customfabric.json
     
-
+### Run the help command to get further help with available flags
+    
+    python3 main.py -h
+    
 ### DevNet Sandbox
 
 A great way to try this sample code is by using it against [ACI Simulator v4](https://developer.cisco.com/docs/sandbox/#!data-center/overview). DNS name and credentials for the sandbox could be found inside the detailed description of the sandbox.
