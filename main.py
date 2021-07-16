@@ -34,15 +34,13 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Get Faults from your ACI Fabrics',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-f","--fabric", help="Providate a fabric JSON file", default="fabrics.json",type=str)
     parser.add_argument("-d","--days", help="Filter events older than value provided", default=7, type=int)
-    parser.add_argument("-l","--length", help="Filter description texts longer than value provided", default=200, type=int)
+    parser.add_argument("-l","--length", help="Truncate the description output to the value provided", default=200, type=int)
     parser.add_argument("-a","--ack",help="Show faults which have been ACKed in the APIC",action="store_true")
     parser.add_argument("--faults",help="Filter fault severities not provided",default="critical,major,minor,warning,info,cleared", type=str)
     parser.add_argument("--ignore-warnings",help="Disable warning messages",action='store_true')
     parser.add_argument("--disable-certificate-check",help="Disables validation of server certificate",action='store_false')
 
     args = parser.parse_args()
-
-    print(args)
 
     fabric_file = args.fabric
     max_event_age = args.days
@@ -98,7 +96,7 @@ if __name__=='__main__':
         if not response.ok:
             response.raise_for_status()
 
-        fabric_health = response.json()["imdata"][0]["fabricHealthTotal"]["attributes"]["cur"]
+        fabric_health = int(response.json()["imdata"][0]["fabricHealthTotal"]["attributes"]["cur"])
 
 
         #Convert Fault JSON output to Python object
@@ -132,9 +130,6 @@ if __name__=='__main__':
             if attr.ack == "yes" and args.ack is not None:
                 continue
 
-            if len(attr.descr) > max_desc_length:
-                continue
-
             if attr.severity not in args.faults.split(","):
                 continue
             
@@ -147,9 +142,41 @@ if __name__=='__main__':
             if not_older_than > fault_event_time:
                 continue
             attr.fabric = fabric
-            attr.fabricHealth = int(fabric_health)
+            attr.fabricHealth = fabric_health
             print_faults.append(attr)
-            
+
+        if len(print_faults) == 0:
+            #Add a "simulated fault" when there are no new faults to report for a fabric"
+            json.loads(json.dumps(allFaults), )
+            print_faults = [
+                json.loads(json.dumps({
+                    "fabric":fabric,
+                    "fabricHealth":fabric_health,
+                    "ack":"no",
+                    "cause":"faults-filtered",
+                    "changeSet":"",
+                    "childAction":"",
+                    "code":"",
+                    "created":"",
+                    "delegated":"no",
+                    "descr":"No new faults in {} days".format(str(max_event_age)),
+                    "dn":"",
+                    "domain":"",
+                    "highestSeverity":"info",
+                    "lastTransition":"",
+                    "lc":"",
+                    "occur":"",
+                    "origSeverity":"info",
+                    "prevSeverity":"info",
+                    "rule":"",
+                    "severity":"info",
+                    "status":"",
+                    "subject":"",
+                    "type":""
+                }),object_hook=lambda d: types.SimpleNamespace(**d))
+            ]
+                
+
         faults_over_all_fabrics = faults_over_all_fabrics + print_faults
 
     faults_over_all_fabrics = sorted(
@@ -172,16 +199,16 @@ if __name__=='__main__':
         "Occur"
     ]
     for fault in faults_over_all_fabrics:
-        table.add_row([
-            fault.fabric,
-            fault.fabricHealth,
-            fault.lastTransition,
-            fault.domain,
-            fault.severity,
-            fault.code,
-            fault.cause,
-            fault.descr,
-            fault.occur
-        ])
+            table.add_row([
+                fault.fabric,
+                fault.fabricHealth,
+                fault.lastTransition,
+                fault.domain,
+                fault.severity,
+                fault.code,
+                fault.cause,
+                fault.descr[:max_desc_length],
+                fault.occur
+            ])
 
     print(table)
