@@ -37,6 +37,7 @@ if __name__=='__main__':
     parser.add_argument("-d","--days", help="Filter events older than value provided", default=7, type=int)
     parser.add_argument("-l","--length", help="Truncate the description output to the value provided", default=200, type=int)
     parser.add_argument("-a","--ack",help="Show faults which have been ACKed in the APIC",action="store_true")
+    parser.add_argument("--same-credentials",help="Allows a user to only provide credentials for all fabrics once",action='store_true')
     parser.add_argument("--faults",help="Filter fault severities not provided",default="critical,major,minor,warning,info,cleared", type=str)
     parser.add_argument("--ignore-warnings",help="Disable warning messages",action='store_true')
     parser.add_argument("--disable-certificate-check",help="Disables validation of server certificate",action='store_false')
@@ -55,10 +56,20 @@ if __name__=='__main__':
 
     faults_over_all_fabrics = []
 
+    username = None
+    password = None
+
     for fabric in fabrics["fabrics"]:
         session = requests.Session()
-        username = input("Username to fabric {}: ".format(fabric))
-        password = getpass.getpass("Password to fabric {}: ".format(fabric))
+
+        if args.same_credentials:
+            if username is None:
+                username = input("Username for all fabrics: ")
+                password = getpass.getpass("Password to all fabrics: ")
+        else:
+            username = input("Username to fabric {}: ".format(fabric))
+            password = getpass.getpass("Password to fabric {}: ".format(fabric))
+
         session.verify = False if args.disable_certificate_check is not None else True
         session.headers = {"Content-Type":"application/json"}
 
@@ -137,14 +148,6 @@ if __name__=='__main__':
             if attr.severity not in args.faults.split(","):
                 continue
             
-            """year_month_day,hours_min_sec = tuple(attr.lastTransition.split("T"))
-            year,month,day = tuple(year_month_day.split("-"))
-            hour,min,sec = tuple(hours_min_sec.split(".")[0].split(":"))
-
-            fault_event_time = datetime.datetime(int(year),int(month),int(day),int(hour),int(min),int(sec))
-            
-            if not_older_than > fault_event_time:
-                continue"""
             attr.fabric = fabric
             attr.fabricHealth = fabric_health
             print_faults.append(attr)
