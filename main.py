@@ -42,6 +42,7 @@ if __name__=='__main__':
     parser.add_argument("--faults",help="Filter fault severities not provided",default="critical,major,minor,warning,info,cleared", type=str)
     parser.add_argument("--ignore-warnings",help="Disable warning messages",action='store_true')
     parser.add_argument("--disable-certificate-check",help="Disables validation of server certificate",action='store_false')
+    parser.add_argument("--unsecure-transport",help="Enforce HTTP communication to all ACI fabrics",action='store_true')
 
     args = parser.parse_args()
 
@@ -49,8 +50,11 @@ if __name__=='__main__':
     max_event_age = args.days
     max_desc_length = args.length
 
-    if args.ignore_warnings is not None:
+    if args.ignore_warnings:
         urllib3.disable_warnings()
+
+    if args.unsecure_transport:
+        __schema = "http://"
     
     fabrics = json.load(open(fabric_file,'r'))
 
@@ -210,7 +214,7 @@ if __name__=='__main__':
             table.add_row([
                 fault.fabric,
                 fault.fabricHealth,
-                getattr(fault,"lastTransition",""),
+                getattr(fault,"lastTransition",not_older_than),
                 getattr(fault,"domain",""),
                 getattr(fault,"severity",""),
                 getattr(fault,"code",""),
