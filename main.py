@@ -13,6 +13,7 @@ import prettytable
 import requests
 import types
 import getpass
+from requests.models import HTTPError
 import urllib3
 
 __loginPath = "/api/aaaLogin.json"
@@ -86,8 +87,12 @@ if __name__=='__main__':
             }
         )
 
-        if not response.ok:
-            response.raise_for_status()
+        try:
+            if not response.ok:
+                response.raise_for_status()
+        except HTTPError as error:
+            print(error)
+            continue
         
 
         #Get All Faults
@@ -97,8 +102,13 @@ if __name__=='__main__':
             url=__schema+fabric+__classQuery.format("faultInfo")+__query_filter_string.format("gt","faultInst.lastTransition",not_older_than)
         )
 
-        if not response.ok:
-            response.raise_for_status()
+        try:
+            if not response.ok:
+                response.raise_for_status()
+        except HTTPError as error:
+            print(error)
+            continue
+        
                 
         allFaults = response.json()
 
@@ -107,8 +117,12 @@ if __name__=='__main__':
             url=__schema+fabric+__moQuery.format("topology/health")
         )
 
-        if not response.ok:
-            response.raise_for_status()
+        try:
+            if not response.ok:
+                response.raise_for_status()
+        except HTTPError as error:
+            print(error)
+            continue
 
         fabric_health = int(response.json()["imdata"][0]["fabricHealthTotal"]["attributes"]["cur"])
 
@@ -140,7 +154,8 @@ if __name__=='__main__':
             elif hasattr(fault,"faultDelegate"):
                 attr = fault.faultDelegate.attributes
             else:
-                raise NotImplemented("Fault type has not been implemented")
+                print("Fault type has not been implemented")
+                continue
             
             if attr.ack == "yes" and args.ack is not None:
                 continue
@@ -161,25 +176,7 @@ if __name__=='__main__':
                     "fabricHealth":fabric_health,
                     "ack":"no",
                     "cause":"faults-filtered",
-                    "changeSet":"",
-                    "childAction":"",
-                    "code":"",
-                    "created":"",
-                    "delegated":"no",
                     "descr":"No new faults in {} days".format(str(max_event_age)),
-                    "dn":"",
-                    "domain":"",
-                    "highestSeverity":"info",
-                    "lastTransition":"",
-                    "lc":"",
-                    "occur":"",
-                    "origSeverity":"info",
-                    "prevSeverity":"info",
-                    "rule":"",
-                    "severity":"info",
-                    "status":"",
-                    "subject":"",
-                    "type":""
                 }),object_hook=lambda d: types.SimpleNamespace(**d))
             ]
                 
@@ -188,7 +185,11 @@ if __name__=='__main__':
 
     faults_over_all_fabrics = sorted(
         faults_over_all_fabrics, 
-        key=lambda x: (100-x.fabricHealth,__severityMap[x.severity],x.lastTransition),
+        key=lambda x: (
+            100-x.fabricHealth,
+            __severityMap[getattr(x,"severity","info")],
+            getattr(x,"lastTransition",not_older_than)
+            ),
         reverse=True
         )
 
@@ -209,13 +210,13 @@ if __name__=='__main__':
             table.add_row([
                 fault.fabric,
                 fault.fabricHealth,
-                fault.lastTransition,
-                fault.domain,
-                fault.severity,
-                fault.code,
-                fault.cause,
-                fault.descr[:max_desc_length],
-                fault.occur
+                getattr(fault,"lastTransition",""),
+                getattr(fault,"domain",""),
+                getattr(fault,"severity",""),
+                getattr(fault,"code",""),
+                getattr(fault,"cause",""),
+                getattr(fault,"descr","")[:max_desc_length],
+                getattr(fault,"occur","1")
             ])
 
     print(table)
