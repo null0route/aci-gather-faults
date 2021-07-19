@@ -1,5 +1,3 @@
-{
-    "fabrics":[
-        "sandboxapicdc.cisco.com"
-    ]
-}
+[
+    "sandboxapicdc.cisco.com"
+]

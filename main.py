@@ -64,7 +64,7 @@ if __name__=='__main__':
     username = None
     password = None
 
-    for fabric in fabrics["fabrics"]:
+    for fabric in fabrics:
         session = requests.Session()
 
         if args.same_credentials:
