@@ -18,6 +18,7 @@ import urllib3
 __loginPath = "/api/aaaLogin.json"
 __logoutPath = "/api/aaaLogout.json"
 __classQuery = "/api/node/class/{0}.json"
+__query_filter_string = '?query-target-filter={0}({1},"{2}")'
 __moQuery = "/api/node/mo/{0}.json"
 __schema = "https://"
 
@@ -79,8 +80,10 @@ if __name__=='__main__':
         
 
         #Get All Faults
+        not_older_than = (datetime.datetime.utcnow()-datetime.timedelta(days=max_event_age)).strftime("%Y-%m-%dT%H:%M")
+        
         response = session.get(
-            url=__schema+fabric+__classQuery.format("faultInfo")
+            url=__schema+fabric+__classQuery.format("faultInfo")+__query_filter_string.format("gt","faultInst.lastTransition",not_older_than)
         )
 
         if not response.ok:
@@ -117,7 +120,8 @@ if __name__=='__main__':
         #Collect Faults to print
         print_faults = []
 
-        not_older_than = datetime.datetime.utcnow()-datetime.timedelta(days=max_event_age)
+
+
 
         for fault in pyAllFaults.imdata:
             if hasattr(fault,"faultInst"):
@@ -133,14 +137,14 @@ if __name__=='__main__':
             if attr.severity not in args.faults.split(","):
                 continue
             
-            year_month_day,hours_min_sec = tuple(attr.lastTransition.split("T"))
+            """year_month_day,hours_min_sec = tuple(attr.lastTransition.split("T"))
             year,month,day = tuple(year_month_day.split("-"))
             hour,min,sec = tuple(hours_min_sec.split(".")[0].split(":"))
 
             fault_event_time = datetime.datetime(int(year),int(month),int(day),int(hour),int(min),int(sec))
             
             if not_older_than > fault_event_time:
-                continue
+                continue"""
             attr.fabric = fabric
             attr.fabricHealth = fabric_health
             print_faults.append(attr)
